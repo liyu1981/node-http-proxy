@@ -1,0 +1,82 @@
+#!/bin/bash
+#
+# hue proxy for cthadoop
+# author: Li Yu (liyu@clustertech.com)
+#
+# chkconfig: 2345 90 10
+# description: cthadoop hue proxy
+# pidfile: /var/cthadoop/hue-proxy.pid
+
+. /etc/init.d/functions
+
+NODE=/usr/local/bin/node
+VARDIR=/var/cthadoop
+PIDFILE=/var/cthadoop/hue-proxy.pid
+SHUTDOWN_TIMEOUT=15
+
+export PYTHON_EGG_CACHE='/tmp/.hue-python-eggs'
+
+hue_proxy_start() {
+        echo -n "Starting hue proxy: "
+        mkdir -p ${VARDIR}
+        cd /root/node-http-proxy
+        ${NODE} ./bin/proxy --config route.json 1>/dev/null 2>/dev/null &
+        pid=$!
+        ret=$?
+        echo $pid >${PIDFILE}
+        cd -
+        base=$(basename $0)
+        if [ $ret -eq 0 ]; then
+            success $"$base startup"
+        else
+            failure $"$base startup"
+        fi
+        echo
+        return $ret
+}
+
+hue_proxy_stop() {
+        if [ ! -e $PIDFILE ]; then
+            success "Hue proxy is not running"
+            return 0
+        fi
+
+        echo -n "Shutting down hue: "
+
+        THE_PID=`cat $PIDFILE 2>/dev/null`
+        if [ -n "$THE_PID" ]; then
+          kill -TERM ${THE_PID} &>/dev/null
+          for i in `seq 1 ${SHUTDOWN_TIMEOUT}` ; do
+            kill -0 ${THE_PID} &>/dev/null || break
+            sleep 1
+          done
+          kill -KILL ${THE_PID} &>/dev/null
+        fi
+        echo
+        return 0
+}
+
+hue_proxy_restart() {
+  hue_stop
+  hue_start
+}
+
+case "$1" in
+    start)
+        hue_proxy_start
+        ;;
+    stop)
+        hue_proxy_stop
+        ;;
+    status)
+        status -p $PIDFILE node 
+        ;;
+    restart)
+        hue_proxy_restart
+        ;;
+    *)
+        echo "Usage:  {start|stop|status|restart}"
+        exit 1
+        ;;
+esac
+exit $?
