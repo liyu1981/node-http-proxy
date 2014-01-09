@@ -9,7 +9,7 @@
 
 . /etc/init.d/functions
 
-NODE=/usr/local/bin/node
+NODE=`which node`
 VARDIR=/var/cthadoop
 PIDFILE=/var/cthadoop/hue-proxy.pid
 SHUTDOWN_TIMEOUT=15
